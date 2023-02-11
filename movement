@@ -1,0 +1,176 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Movement : MonoBehaviour
+{
+    public bool isPlayerTurn;
+    public bool hasRolled;
+    public bool hasMoved;
+    public int spacesToMove;
+    public Space startingSpace;
+    public Space currentSpace;
+    private Space finalSpace;
+    public GameObject player;
+    public GameObject dice;
+
+    public bool isGoingForwards = true;
+
+    public KeyCode upKey = KeyCode.UpArrow;
+    public KeyCode downKey = KeyCode.DownArrow;
+    public KeyCode leftKey = KeyCode.LeftArrow;
+    public KeyCode rightKey = KeyCode.RightArrow;
+
+    int input = 0;
+    bool isChoosing = false;
+
+    Vector3 targetPosition;
+    Vector3 velocity;
+    public float smoothSpeed = 0.5f;
+
+    Space[] moveQueue;
+    int moveQueueIndex;
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        finalSpace = startingSpace;
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+
+        if (isPlayerTurn && !hasRolled) {
+            //TODO: ADD A ROLL FUNCTION
+            player.transform.position = startingSpace.transform.position;
+            if (Input.GetKey(KeyCode.Space)) {
+                hasRolled = true;
+            }
+        }
+        else if (isPlayerTurn && hasRolled && !hasMoved) {
+            MoveQueueSetup();
+        }
+        
+        //Moves Player piece
+        MovePlayer();
+    }
+
+    //sets up queue to move player
+    void MoveQueueSetup() {
+        moveQueue = new Space[spacesToMove];
+
+        for(int i = 0; i <= (spacesToMove - 1); i++) {
+            if (finalSpace == null) {
+                finalSpace = startingSpace;
+            }
+            else {
+                if (isGoingForwards) {
+                    if (finalSpace.frontSpaces.Length == 1) {
+                        finalSpace = finalSpace.frontSpaces[0];
+                    }
+                    else if (finalSpace.frontSpaces.Length > 1) {
+                        int j = i;
+                        WaitForInput();
+                        InputChecker(j, i);
+                    }
+                }
+                    else {
+                        if (finalSpace.backSpaces.Length == 1) {
+                            finalSpace = finalSpace.backSpaces[0];
+                        }
+                    }
+                        
+                }
+
+                moveQueue[i] = finalSpace;
+
+                if (i == spacesToMove - 1 && !isChoosing) {
+                    //TODO: ADD FUNCTION FOR DOING WHATEVER SPACE HAS YOU DO
+                    isPlayerTurn = false;
+                    hasRolled = false;
+                }
+            }
+
+            if (finalSpace.frontSpaces.Length == 1) {
+                moveQueueIndex = 0;
+                finalSpace = currentSpace;
+            }
+    }
+
+    //Moves player along the path with a queue
+    void MovePlayer() {
+        if ( Vector3.Distance(player.transform.position, targetPosition) < 0.01f) {
+            if (moveQueue != null && moveQueueIndex < moveQueue.Length) {
+                Debug.Log(moveQueueIndex);
+                setTarPos(moveQueue[moveQueueIndex].transform.position);
+                moveQueueIndex++;
+            }
+        }
+
+        player.transform.position = Vector3.SmoothDamp( player.transform.position, targetPosition, ref velocity, smoothSpeed);            
+    }
+
+    void setTarPos(Vector3 pos) {
+        targetPosition = pos;
+        velocity = Vector3.zero;
+    }
+
+    //checks if player has chosen a valid path
+    void WaitForInput() {
+        //isChoosing = true;
+
+        if (Input.GetKey(upKey) && finalSpace.upSpace != null) {
+            input = 1;
+            isChoosing = false;
+        }
+
+        else if (Input.GetKey(rightKey) && finalSpace.rightSpace != null) {
+            input = 2;
+            isChoosing = false;
+        }
+
+        else if (Input.GetKeyDown(downKey) && finalSpace.downSpace != null) {
+            input = 3;
+            isChoosing = false;
+        }
+
+        else if (Input.GetKey(leftKey) && finalSpace.leftSpace != null) {
+            input = 4;
+            isChoosing = false;
+        }
+    }
+
+    void InputChecker(int j, int i) {
+        if (input == 1) {
+            i = j;
+            currentSpace = finalSpace;
+            finalSpace = finalSpace.upSpace;
+            }
+
+        if (input == 2) {
+            i = j;
+            currentSpace = finalSpace;
+            finalSpace = finalSpace.rightSpace;
+        }
+
+        if (input == 3) {
+            i = j;
+            currentSpace = finalSpace;
+            finalSpace = finalSpace.downSpace;
+            }
+
+        if (input == 4) {
+            i = j;
+            currentSpace = finalSpace;
+            finalSpace = finalSpace.leftSpace;
+        }
+        
+        //checks if dircetion player chose to go would make them go backwards
+        if (finalSpace.tag == "playerBackwardsIndicator") {
+            isGoingForwards = false;
+        }
+        else
+            isGoingForwards = true;
+    }
+}
